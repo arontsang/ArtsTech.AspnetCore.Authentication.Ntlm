@@ -1,11 +1,12 @@
 using ArtsTech.AspnetCore.Authentication.Ntlm;
+using ArtsTech.AspnetCore.Authentication.Ntlm.Sample;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorPages();
-builder.Services.AddAuthentication(NtlmDefaults.AuthenticationScheme)
-    .AddNtlm();
+ builder.Services.AddAuthentication(NtlmDefaults.AuthenticationScheme)
+     .AddNtlm();
 
 builder.Services.AddAuthorization();
 
@@ -20,8 +21,8 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
-app.UseAuthentication();
-app.UseAuthorization();
+ app.UseAuthentication();
+ app.UseAuthorization();
 
 app.MapRazorPages();
 
