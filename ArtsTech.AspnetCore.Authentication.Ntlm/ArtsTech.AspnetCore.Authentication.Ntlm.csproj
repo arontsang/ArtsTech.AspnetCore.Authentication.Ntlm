@@ -4,6 +4,13 @@
     <TargetFramework>netstandard2.0</TargetFramework>
 	<Nullable>enable</Nullable>
 	<LangVersion>10.0</LangVersion>
+	<Authors>Aron Tsang</Authors>
+	<RepositoryUrl>https://github.com/arontsang/ArtsTech.AspnetCore.Authentication.Ntlm</RepositoryUrl>
+	<RepositoryType>git</RepositoryType>
+	<PackageTags>ntlm;linux;authentication</PackageTags>
+	<PackageLicenseExpression>LGPL-3.0-or-later</PackageLicenseExpression>
+	<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
+	<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,7 +21,9 @@
     <PackageReference Include="JetBrains.Annotations" Version="2021.3.0">
 	    <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="JetBrainsAnnotations.Fody" Version="2.17.0" />
+    <PackageReference Include="JetBrainsAnnotations.Fody" Version="2.17.0" >
+	    <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="Microsoft.AspNetCore.Authentication" Version="2.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.Connections.Abstractions" Version="6.0.1" />
     <PackageReference Include="System.Reactive" Version="5.0.0" />
