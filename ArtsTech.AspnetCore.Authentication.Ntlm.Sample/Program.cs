@@ -2,10 +2,8 @@ using ArtsTech.AspnetCore.Authentication.Ntlm;
 using ArtsTech.AspnetCore.Authentication.Ntlm.Sample;
 
 var builder = WebApplication.CreateBuilder(args);
-var foo = Environment.GetEnvironmentVariable("PATH");
-// Add services to the container.
 builder.Services.AddRazorPages();
- builder.Services.AddAuthentication(NtlmDefaults.AuthenticationScheme)
+builder.Services.AddAuthentication(NtlmDefaults.AuthenticationScheme)
      .AddNtlm();
 
 builder.Services.AddAuthorization();
