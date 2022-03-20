@@ -1,3 +1,5 @@
+[![NuGet version (ArtsTech.AspnetCore.Authentication.Ntlm)](https://img.shields.io/nuget/v/ArtsTech.AspnetCore.Authentication.Ntlm.svg?style=flat-square)](https://www.nuget.org/packages/ArtsTech.AspnetCore.Authentication.Ntlm)
+
 # ArtsTech.AspnetCore.Authentication.Ntlm
 An AspnetCore middleware for NTLM auth on Posix
 
