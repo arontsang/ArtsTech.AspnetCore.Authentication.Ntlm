@@ -3,11 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArtsTech.AspnetCore.Authentication.Ntlm", "ArtsTech.AspnetCore.Authentication.Ntlm\ArtsTech.AspnetCore.Authentication.Ntlm.csproj", "{ECA44D4A-7C5E-4FF1-95AF-5D07DA92DB3D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ArtsTech.AspnetCore.Authentication.Ntlm", "ArtsTech.AspnetCore.Authentication.Ntlm\ArtsTech.AspnetCore.Authentication.Ntlm.csproj", "{ECA44D4A-7C5E-4FF1-95AF-5D07DA92DB3D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArtsTech.AspnetCore.Authentication.Ntlm.Test", "ArtsTech.AspnetCore.Authentication.Ntlm.Test\ArtsTech.AspnetCore.Authentication.Ntlm.Test.csproj", "{AA95675D-53FA-43C2-AEA0-961A6341ABE5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ArtsTech.AspnetCore.Authentication.Ntlm.Test", "ArtsTech.AspnetCore.Authentication.Ntlm.Test\ArtsTech.AspnetCore.Authentication.Ntlm.Test.csproj", "{AA95675D-53FA-43C2-AEA0-961A6341ABE5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArtsTech.AspnetCore.Authentication.Ntlm.Sample", "ArtsTech.AspnetCore.Authentication.Ntlm.Sample\ArtsTech.AspnetCore.Authentication.Ntlm.Sample.csproj", "{61480875-77D4-4DDF-9799-A9D00CC667CF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ArtsTech.AspnetCore.Authentication.Ntlm.Sample", "ArtsTech.AspnetCore.Authentication.Ntlm.Sample\ArtsTech.AspnetCore.Authentication.Ntlm.Sample.csproj", "{61480875-77D4-4DDF-9799-A9D00CC667CF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArtsTech.Ntlm.FakeSquidHelper", "ArtsTech.Ntlm.FakeSquidHelper\ArtsTech.Ntlm.FakeSquidHelper.csproj", "{E664C05D-340A-4B2D-9940-24BEE9F05BF6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,6 +29,10 @@ Global
 		{61480875-77D4-4DDF-9799-A9D00CC667CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{61480875-77D4-4DDF-9799-A9D00CC667CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{61480875-77D4-4DDF-9799-A9D00CC667CF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E664C05D-340A-4B2D-9940-24BEE9F05BF6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E664C05D-340A-4B2D-9940-24BEE9F05BF6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E664C05D-340A-4B2D-9940-24BEE9F05BF6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E664C05D-340A-4B2D-9940-24BEE9F05BF6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

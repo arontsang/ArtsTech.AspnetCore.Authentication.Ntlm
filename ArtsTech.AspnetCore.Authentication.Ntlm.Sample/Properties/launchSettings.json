@@ -12,7 +12,8 @@
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "PATH": "..\\ArtsTech.Ntlm.FakeSquidHelper\\bin;%PATH%"
       },
       "applicationUrl": "http://localhost:5191",
       "dotnetRunMessages": true
@@ -23,12 +24,7 @@
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
-    },
-    "Docker": {
-      "commandName": "Docker",
-      "launchBrowser": true,
-      "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}",
-      "publishAllPorts": true
     }
+
   }
 }

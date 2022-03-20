@@ -4,28 +4,27 @@ using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
 using System;
 using System.Buffers.Binary;
-using System.Diagnostics;
 using System.Security.Claims;
 using System.Security.Principal;
 using System.Text.Encodings.Web;
 using System.Threading;
 using System.Threading.Tasks;
-using ArtsTech.AspnetCore.Authentication.Ntlm.Reactive;
+using JetBrains.Annotations;
 using Microsoft.AspNetCore.Connections.Features;
 
 namespace ArtsTech.AspnetCore.Authentication.Ntlm;
 
+// ReSharper disable once ClassNeverInstantiated.Global
 public class NtlmHandler
     : AuthenticationHandler<NtlmOptions>
 {
-    private readonly Memory<byte> NtlmSspCString =
+    private static readonly Memory<byte> NtlmSspCString =
         new(new byte[] { 0x4e, 0x54, 0x4c, 0x4d, 0x53, 0x53, 0x50, 0x00 });
 
-    private const string NtlmChallenge = "NtlmChallenge";
 
     private static ThreadLocal<string?> Challenge = new();
 
-
+    [UsedImplicitly]
     public NtlmHandler(
         IOptionsMonitor<NtlmOptions> options,
         ILoggerFactory logger,
@@ -36,7 +35,7 @@ public class NtlmHandler
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        var stateHolder = GetNtlmState();
+        var connectionState = GetNtlmState();
         try
         {
             foreach (var authorizationString in Request.Headers[HeaderNames.Authorization])
@@ -57,8 +56,8 @@ public class NtlmHandler
                 {
                     case 1:
                     {
-                        var ntlmState = stateHolder.Disposable = new NtlmState();
-                        Challenge.Value = await ntlmState.HandleNtlmType1MessageAsync(payload);
+                        var authHelperProxy = connectionState.NtlmAuthHelperProxy ??= new NtlmSquidHelperProxy();
+                        Challenge.Value = await authHelperProxy.HandleNtlmType1MessageAsync(payloadBase64);
                         return AuthenticateResult.Fail("NTLM Challenge sent.");
                     }
                     case 2:
@@ -66,10 +65,12 @@ public class NtlmHandler
                             new InvalidOperationException("NTLM type 2 message is not expected from client."));
                     case 3:
                     {
-                        if (stateHolder.Disposable is {} ntlmState && await ntlmState.HandleNtlmType3MessageAsync(payload))
+                        if (connectionState.NtlmAuthHelperProxy is { IsRunning: true } ntlmHelper 
+                            && await ntlmHelper.HandleNtlmType3MessageAsync(payloadBase64) is {} username)
                         {
-
-                            var user = ConnectionUser = new ClaimsPrincipal(new GenericIdentity("DOMAIN\\USER"));
+                            var user = connectionState.ConnectionUser = new ClaimsPrincipal(new GenericIdentity(username));
+                                // Dispose helper.
+                            connectionState.NtlmAuthHelperProxy = null;
                             return AuthenticateResult.Success(new AuthenticationTicket(user, Scheme.Name));
                         }
                         else
@@ -84,7 +85,7 @@ public class NtlmHandler
                 }
             }
 
-            if (ConnectionUser is { } existingUser)
+            if (connectionState.ConnectionUser is { } existingUser)
             {
                 return AuthenticateResult.Success(new AuthenticationTicket(existingUser, Scheme.Name));
             }
@@ -110,34 +111,11 @@ public class NtlmHandler
 
         return base.HandleChallengeAsync(properties);
     }
-
-
-    private static object ConnectionUserKey = new();
-    private ClaimsPrincipal? ConnectionUser
-    {
-        get
-        {
-            if (Context.Features.Get<IConnectionItemsFeature>() is { } connectionItems
-                && connectionItems.Items.TryGetValue(ConnectionUserKey, out var connectionUserObj)
-                && connectionUserObj is ClaimsPrincipal user)
-            {
-                return user;
-            }
-
-            return default;
-        }
-        set
-        {
-            if (Context.Features.Get<IConnectionItemsFeature>() is { } connectionItems)
-            {
-                connectionItems.Items[ConnectionUserKey] = value;
-            }
-        }
-    }
+    
 
     private static object NtlmStateKey = new();
 
-    private SerialDisposable<NtlmState> GetNtlmState()
+    private NtlmConnectionState GetNtlmState()
     {
         if (Context.Features.Get<IConnectionItemsFeature>() is not { } connectionItems)
 
@@ -149,7 +127,7 @@ public class NtlmHandler
             throw new NotSupportedException(
                 $"NTLM authentication requires a server that supports {nameof(IConnectionLifetimeFeature)} like Kestrel.");
 
-        if (connectionItems.Items.TryGetValue(NtlmStateKey, out var ret) && ret is SerialDisposable<NtlmState> state)
+        if (connectionItems.Items.TryGetValue(NtlmStateKey, out var ret) && ret is NtlmConnectionState state)
             return state;
 
 
@@ -168,26 +146,7 @@ public class NtlmHandler
         return Task.CompletedTask;
     }
 
-    private class NtlmState
-        : IDisposable
-    {
 
-
-        public async Task<string> HandleNtlmType1MessageAsync(Memory<byte> payload)
-        {
-            return "TlRMTVNTUAACAAAADAAMADAAAAABAoEAASNFZ4mrze8AAAAAAAAAAGIAYgA8AAAARABPAE0AQQBJAE4AAgAMAEQATwBNAEEASQBOAAEADABTAEUAUgBWAEUAUgAEABQAZABvAG0AYQBpAG4ALgBjAG8AbQADACIAcwBlAHIAdgBlAHIALgBkAG8AbQBhAGkAbgAuAGMAbwBtAAAAAAA=";
-        }
-
-        public Task<bool> HandleNtlmType3MessageAsync(Memory<byte> payload)
-        {
-            return Task.FromResult(true);
-        }
-
-        public void Dispose()
-        {
-            
-        }
-    }
 }
 
 public class NtlmHelperNotInitException : Exception

@@ -1,7 +1,9 @@
-﻿namespace ArtsTech.AspnetCore.Authentication.Ntlm
+﻿using JetBrains.Annotations;
+
+namespace ArtsTech.AspnetCore.Authentication.Ntlm;
+public static class NtlmDefaults
 {
-    public class NtlmDefaults
-    {
-        public const string AuthenticationScheme = "NTLM";
-    }
+    [PublicAPI]
+    public const string AuthenticationScheme = "NTLM";
 }
+
