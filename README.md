@@ -35,5 +35,9 @@ Configuration of Samba/Winbind is out of scope of this readme (and its quite bey
 
     app.Run();
 
+## FAQ
 
+### Why doesn't this support Role based Authorization?
+
+Sorry, I aim to do one thing with this project, and that is to implement NTLM auth on Linux. You add Role based Auth using a custom [Claims Transform](https://docs.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.authentication.iclaimstransformation.transformasync?view=aspnetcore-6.0), and doing an LDAP query.
 
