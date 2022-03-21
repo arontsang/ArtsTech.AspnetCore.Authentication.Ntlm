@@ -1,3 +1,5 @@
+[![NuGet version (ArtsTech.AspnetCore.Authentication.Ntlm)](https://img.shields.io/nuget/v/ArtsTech.AspnetCore.Authentication.Ntlm.svg?style=flat-square)](https://www.nuget.org/packages/ArtsTech.AspnetCore.Authentication.Ntlm)
+
 # ArtsTech.AspnetCore.Authentication.Ntlm
 An AspnetCore middleware for NTLM auth on Posix
 
@@ -35,5 +37,9 @@ Configuration of Samba/Winbind is out of scope of this readme (and its quite bey
 
     app.Run();
 
+## FAQ
 
+### Why doesn't this support role-based access control (RBAC)?
+
+Sorry, I aim to do one thing with this project, and that is to implement NTLM auth on Linux. You add a custom [Claims Transform](https://docs.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.authentication.iclaimstransformation.transformasync?view=aspnetcore-6.0) to add the Role claims from an LDAP query. Just register your `IClaimsTransformation` in your service provider.
 
