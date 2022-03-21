@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Reactive.Disposables;
-using System.Text;
 
 #nullable enable
 namespace ArtsTech.AspnetCore.Authentication.Ntlm.Reactive

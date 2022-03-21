@@ -21,8 +21,12 @@ public class NtlmHandler
     private static readonly Memory<byte> NtlmSspCString =
         new(new byte[] { 0x4e, 0x54, 0x4c, 0x4d, 0x53, 0x53, 0x50, 0x00 });
 
-
-    private static ThreadLocal<string?> Challenge = new();
+    private static readonly object ChallengeKey = new();
+    private string? Challenge
+    {
+        get => Context.Items[ChallengeKey] as string;
+        set => Context.Items[ChallengeKey] = value;
+    }
 
     [UsedImplicitly]
     public NtlmHandler(
@@ -57,7 +61,7 @@ public class NtlmHandler
                     case 1:
                     {
                         var authHelperProxy = connectionState.NtlmAuthHelperProxy ??= new NtlmSquidHelperProxy();
-                        Challenge.Value = await authHelperProxy.HandleNtlmType1MessageAsync(payloadBase64);
+                        Challenge = await authHelperProxy.HandleNtlmType1MessageAsync(payloadBase64);
                         return AuthenticateResult.Fail("NTLM Challenge sent.");
                     }
                     case 2:
@@ -100,7 +104,7 @@ public class NtlmHandler
 
     protected override Task HandleChallengeAsync(AuthenticationProperties properties)
     {
-        if (Challenge.Value is {} challenge)
+        if (Challenge is {} challenge)
         {
             Response.Headers.Add(HeaderNames.WWWAuthenticate, $"NTLM {challenge}");
         }
