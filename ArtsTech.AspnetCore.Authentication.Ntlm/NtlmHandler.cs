@@ -91,7 +91,7 @@ public class NtlmHandler
 
             if (connectionState.ConnectionUser is { } existingUser)
             {
-                return AuthenticateResult.Success(new AuthenticationTicket(existingUser, Scheme.Name));
+                return AuthenticateResult.Success(new AuthenticationTicket(existingUser.Clone(), Scheme.Name));
             }
 
             return AuthenticateResult.NoResult();
