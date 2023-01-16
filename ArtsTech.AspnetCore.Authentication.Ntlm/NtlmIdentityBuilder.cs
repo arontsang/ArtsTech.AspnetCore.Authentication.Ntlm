@@ -49,36 +49,34 @@ public class NtlmIdentityBuilder
 	
 	private static string? GetSid(IWinBindClient wbcLib, ReadOnlyMemory<char> domain, ReadOnlyMemory<char> user)
 	{
+		Span<byte> domainUtf8 = stackalloc byte[128];
+		Span<byte> usernameUtf8 = stackalloc byte[128];
+
+
+		GetUtf8String(domain, ref domainUtf8);
+		GetUtf8String(user, ref usernameUtf8);
+		
 		return GetSid(
 			wbcLib,
-			GetUtf8String(domain),
-			GetUtf8String(user)
+			domainUtf8,
+			usernameUtf8
 		);
 	}
 	
 	private static string? GetSid(IWinBindClient wbcLib, ReadOnlySpan<byte> domain, ReadOnlySpan<byte> user)
 	{
-		unsafe
-		{
-			Span<byte> sidBinary = new byte[68];
-			Span<WbcSidType> type = new WbcSidType[1];
+		Span<byte> sidBinary = stackalloc byte[128];
+		WbcSidType type = default;
 
-			fixed (byte* sidPtr = sidBinary)
-			fixed (WbcSidType* typePtr = type)
-			fixed (byte* userNamePtr = user)
-			fixed (byte* domainNamePtr = domain)
-			{
-		        
-				var error = wbcLib.wbcLookupName(domainNamePtr, userNamePtr, sidPtr, typePtr);
-				if (error == WbcErrorType.WBC_ERR_SUCCESS)
-				{
-					return GetSidString(sidBinary);
-				}
-			}
+		if (wbcLib.wbcLookupName(domain, user, sidBinary, ref type) == WbcErrorType.WBC_ERR_SUCCESS)
+		{
+			return GetSidString(sidBinary);
 		}
 
 		return null;
 	}
+	
+	
 	
 	private static string GetSidString(ReadOnlySpan<byte> byteCollection)
 	{
@@ -136,28 +134,23 @@ public class NtlmIdentityBuilder
 		return null;
 	}
 	
-	private static ReadOnlySpan<byte> GetUtf8String(ReadOnlyMemory<char> input)
+	private static void GetUtf8String(ReadOnlyMemory<char> input, ref Span<byte> ret)
 	{
-		const int bufferSize = 128; 
 		unsafe
 		{
-			var ret = new byte[bufferSize];
 			fixed (byte* retPtr = ret)
 			fixed (char* inputPtr = input.Span)
 			{
-				var length = Utf8.GetBytes(inputPtr, input.Length, retPtr, bufferSize);
+				var length = Utf8.GetBytes(inputPtr, input.Length, retPtr, ret.Length);
 				ret[length] = 0x00;
 			}
-
-			return ret;
 		}
 	}
 	
 	
 	public interface IWinBindClient
 	{
-		unsafe WbcErrorType wbcLookupName(byte* domainName, byte* userName, byte* sid, WbcSidType* sidType);
-		unsafe WbcErrorType wbcSidToString(byte* sid, byte* sidString);
+		WbcErrorType wbcLookupName(ReadOnlySpan<byte> domainName, ReadOnlySpan<byte> userName, Span<byte> sid, ref WbcSidType sidType);
 	}
 
 	public enum WbcSidType
