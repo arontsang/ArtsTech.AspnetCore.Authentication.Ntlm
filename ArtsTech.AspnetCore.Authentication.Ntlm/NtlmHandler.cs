@@ -6,6 +6,7 @@ using System;
 using System.Buffers.Binary;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
+using ArtsTech.AspnetCore.Authentication.Ntlm.SquidHelper;
 using JetBrains.Annotations;
 using Microsoft.AspNetCore.Connections.Features;
 
@@ -17,6 +18,8 @@ public class NtlmHandler
 {
     private static readonly Memory<byte> NtlmSspCString =
         new(new byte[] { 0x4e, 0x54, 0x4c, 0x4d, 0x53, 0x53, 0x50, 0x00 });
+    
+    private static readonly NtlmAuthenticatorPool AuthenticatorPool = new NtlmAuthenticatorPool();
 
     private static readonly object ChallengeKey = new();
     private string? Challenge
@@ -59,8 +62,8 @@ public class NtlmHandler
                 {
                     case 1:
                     {
-                        var authHelperProxy = connectionState.NtlmAuthHelperProxy ??= new NtlmSquidHelperProxy();
-                        Challenge = await authHelperProxy.HandleNtlmType1MessageAsync(payloadBase64);
+                        var authHelperProxy= connectionState.NtlmAuthHelperProxy = await AuthenticatorPool.GetAuthenticator(payloadBase64);
+                        Challenge = authHelperProxy.AuthenticationChallenge;
                         return AuthenticateResult.Fail("NTLM Challenge sent.");
                     }
                     case 2:
@@ -68,13 +71,19 @@ public class NtlmHandler
                             new InvalidOperationException("NTLM type 2 message is not expected from client."));
                     case 3:
                     {
-                        if (connectionState.NtlmAuthHelperProxy is { IsRunning: true } ntlmHelper 
-                            && await ntlmHelper.HandleNtlmType3MessageAsync(payloadBase64) is {} username)
+                        if (connectionState.NtlmAuthHelperProxy is {} ntlmHelper)
                         {
-                            var user = connectionState.ConnectionUser = _identityBuilder.BuildPrincipal(username);
+                            if (await ntlmHelper.Authenticate(payloadBase64) is {} username)
+                            {
+                                var user = connectionState.ConnectionUser = _identityBuilder.BuildPrincipal(username);
                                 // Dispose helper.
-                            connectionState.NtlmAuthHelperProxy = null;
-                            return AuthenticateResult.Success(new AuthenticationTicket(user, Scheme.Name));
+                                connectionState.NtlmAuthHelperProxy = null;
+                                return AuthenticateResult.Success(new AuthenticationTicket(user, Scheme.Name));
+                            }
+                            else
+                            {
+                                return AuthenticateResult.Fail("Not Authorized");
+                            }
                         }
                         else
                         {

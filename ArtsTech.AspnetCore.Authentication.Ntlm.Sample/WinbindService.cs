@@ -1,25 +1,36 @@
 ﻿using System.Diagnostics;
-using System.Reactive.Linq;
-using System.Reactive.Threading.Tasks;
+using System.Reactive.Concurrency;
+using System.Reactive.Disposables;
 
 namespace ArtsTech.AspnetCore.Authentication.Ntlm.Sample;
 
-public class WinBindService : BackgroundService
+public class WinBindService : IHostedService
 {
-	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+	private readonly SerialDisposable _runSamba = new();
+	
+	public async Task StartAsync(CancellationToken cancellationToken)
 	{
-		// Since we are running in a docker container
-		// winbindd won't autostart
+		using var winbind = Process.Start(new ProcessStartInfo("/bin/sh", "./run-samba.sh") { RedirectStandardOutput = true })!;
+		await winbind.WaitForExitAsync(cancellationToken);
 
-		using var winbind = Process.Start(new ProcessStartInfo("/bin/sh", "./run-samba.sh") { RedirectStandardOutput = true });
-		
-		try
+		_runSamba.Disposable = TaskPoolScheduler.Default.ScheduleAsync(default(object), async (_, _, stoppingToken) =>
 		{
-			await Task.Delay(Timeout.InfiniteTimeSpan, stoppingToken);
-		}
-		finally
-		{
-			winbind.Close();
-		}
+			using var samba = Process.Start(new ProcessStartInfo("samba", "-F --no-process-group") { RedirectStandardOutput = true })!;
+			try
+			{
+				await Task.Delay(Timeout.InfiniteTimeSpan, stoppingToken);
+			}
+			finally
+			{
+				samba.Close();
+			}
+		});
 	}
+
+	public Task StopAsync(CancellationToken cancellationToken)
+	{
+		_runSamba.Dispose();
+		return Task.CompletedTask;
+	}
+
 }

@@ -1,14 +1,15 @@
 ﻿using System;
 using System.Security.Claims;
 using ArtsTech.AspnetCore.Authentication.Ntlm.Reactive;
+using ArtsTech.AspnetCore.Authentication.Ntlm.SquidHelper;
 
 namespace ArtsTech.AspnetCore.Authentication.Ntlm;
 
 internal class NtlmConnectionState : IDisposable
 {
-    private readonly SerialDisposable<NtlmSquidHelperProxy> _ntlmAuthHelperProxy = new();
+    private readonly SerialDisposable<INtlmAuthenticator> _ntlmAuthHelperProxy = new();
 
-    public NtlmSquidHelperProxy? NtlmAuthHelperProxy
+    public INtlmAuthenticator? NtlmAuthHelperProxy
     {
         get => _ntlmAuthHelperProxy.Disposable;
         set => _ntlmAuthHelperProxy.Disposable = value;

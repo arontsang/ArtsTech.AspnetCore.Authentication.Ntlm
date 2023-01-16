@@ -8,11 +8,9 @@ EXPOSE 443
 
 FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
 WORKDIR /src
-COPY ["ArtsTech.AspnetCore.Authentication.Ntlm.Sample/ArtsTech.AspnetCore.Authentication.Ntlm.Sample.csproj", "ArtsTech.AspnetCore.Authentication.Ntlm.Sample/"]
-COPY ["ArtsTech.AspnetCore.Authentication.Ntlm/ArtsTech.AspnetCore.Authentication.Ntlm.csproj", "ArtsTech.AspnetCore.Authentication.Ntlm/"]
-COPY ["ArtsTech.Ntlm.FakeSquidHelper/ArtsTech.Ntlm.FakeSquidHelper.csproj", "ArtsTech.Ntlm.FakeSquidHelper/"]
-RUN dotnet restore "ArtsTech.AspnetCore.Authentication.Ntlm.Sample/ArtsTech.AspnetCore.Authentication.Ntlm.Sample.csproj"
+
 COPY . .
+RUN dotnet restore "ArtsTech.AspnetCore.Authentication.Ntlm.Sample/ArtsTech.AspnetCore.Authentication.Ntlm.Sample.csproj"
 WORKDIR "/src/ArtsTech.AspnetCore.Authentication.Ntlm.Sample"
 RUN dotnet build "ArtsTech.AspnetCore.Authentication.Ntlm.Sample.csproj" -c Release -o /app/build
 
