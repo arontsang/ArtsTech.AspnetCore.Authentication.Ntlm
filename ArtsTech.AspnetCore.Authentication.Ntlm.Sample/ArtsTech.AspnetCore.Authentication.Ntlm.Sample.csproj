@@ -17,4 +17,15 @@
     <ProjectReference Include="..\ArtsTech.AspnetCore.Authentication.Ntlm\ArtsTech.AspnetCore.Authentication.Ntlm.csproj" />
     <ProjectReference Include="..\ArtsTech.Ntlm.FakeSquidHelper\ArtsTech.Ntlm.FakeSquidHelper.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\.dockerignore">
+      <Link>.dockerignore</Link>
+    </Content>
+    <None Remove="run-samba.sh" />
+    <Content Include="run-samba.sh">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
 </Project>
