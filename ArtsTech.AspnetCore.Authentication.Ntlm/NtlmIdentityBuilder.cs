@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 using System.Security.Claims;
 using System.Security.Principal;
 using System.Text;
@@ -8,7 +9,6 @@ namespace ArtsTech.AspnetCore.Authentication.Ntlm;
 
 public class NtlmIdentityBuilder
 {
-	
 	private static readonly IWinBindClient? WinBindClient;
 	private static readonly UTF8Encoding Utf8 = new(false);
 	
@@ -66,62 +66,14 @@ public class NtlmIdentityBuilder
 	private static string? GetSid(IWinBindClient wbcLib, ReadOnlySpan<byte> domain, ReadOnlySpan<byte> user)
 	{
 		Span<byte> sidBinary = stackalloc byte[128];
-		WbcSidType type = default;
-
-		if (wbcLib.wbcLookupName(domain, user, sidBinary, ref type) == WbcErrorType.WBC_ERR_SUCCESS)
+		if (wbcLib.LookupName(domain, user, sidBinary, out var type) == WbcErrorType.WBC_ERR_SUCCESS)
 		{
-			return GetSidString(sidBinary);
+			return SidToString(wbcLib, sidBinary);
 		}
 
 		return null;
 	}
 	
-	
-	
-	private static string GetSidString(ReadOnlySpan<byte> byteCollection)
-	{
-
-		// sid[0] is the Revision, we allow only version 1, because it's the
-		// only version that exists right now.
-		if (byteCollection[0] != 1)
-			throw new ArgumentOutOfRangeException("SID (bytes(0)) revision must be 1");
-
-		var stringSidBuilder = new StringBuilder("S-1-");
-
-		// The next byte specifies the numbers of sub authorities
-		// (number of dashes minus two), should be 5 or less, but not enforcing that
-		var subAuthorityCount = byteCollection[1];
-
-		// IdentifierAuthority (6 bytes starting from the second) (big endian)
-		long identifierAuthority = 0;
-
-		var offset = 2;
-		var size = 6;
-		int i;
-
-		for (i = 0; i <= size - 1; i++)
-			identifierAuthority = identifierAuthority | System.Convert.ToInt64(byteCollection[offset + i]) << 8 * (size - 1 - i);
-
-		stringSidBuilder.Append(identifierAuthority.ToString());
-
-		// Iterate all the SubAuthority (little-endian)
-		offset = 8;
-		size = 4; // 32-bits (4 bytes) for each SubAuthority
-		i = 0;
-		while (i < subAuthorityCount)
-		{
-			long subAuthority = 0;
-
-			for (var j = 0; j <= size - 1; j++)
-				// the below "Or" is a logical Or not a boolean operator
-				subAuthority = subAuthority | System.Convert.ToInt64(byteCollection[offset + j]) << 8 * j;
-			stringSidBuilder.Append("-").Append(subAuthority);
-			i += 1;
-			offset += size;
-		}
-
-		return stringSidBuilder.ToString();
-	}
 	
 	private static (ReadOnlyMemory<char> domain, ReadOnlyMemory<char> user)? ExtractUserAndDomain(string username)
 	{
@@ -147,10 +99,36 @@ public class NtlmIdentityBuilder
 		}
 	}
 	
+	private static string? SidToString(IWinBindClient winBind, ReadOnlySpan<byte> sidBinary)
+	{
+		var success = winBind.SidToString(sidBinary, out var ptr);
+		try
+		{
+			if (success == WbcErrorType.WBC_ERR_SUCCESS)
+			{
+				return Marshal.PtrToStringAnsi(ptr);
+			}
+		}
+		finally
+		{
+			if (ptr != IntPtr.Zero)
+				winBind.FreeMemory(ptr);
+		}
+
+		return null;
+	}
+	
 	
 	public interface IWinBindClient
 	{
-		WbcErrorType wbcLookupName(ReadOnlySpan<byte> domainName, ReadOnlySpan<byte> userName, Span<byte> sid, ref WbcSidType sidType);
+		[NativeSymbol("wbcLookupName")]
+		WbcErrorType LookupName(ReadOnlySpan<byte> domainName, ReadOnlySpan<byte> userName, Span<byte> sid, out WbcSidType sidType);
+
+		[NativeSymbol("wbcSidToString")]
+		WbcErrorType SidToString(ReadOnlySpan<byte> sidBinary, out IntPtr sidString);
+
+		[NativeSymbol("wbcFreeMemory")]
+		void FreeMemory(IntPtr ptr);
 	}
 
 	public enum WbcSidType
@@ -179,3 +157,5 @@ public class NtlmIdentityBuilder
 		WCB_INVALID_RESPONSE,        /**< Winbind returned an invalid response **/
 	}
 }
+
+
