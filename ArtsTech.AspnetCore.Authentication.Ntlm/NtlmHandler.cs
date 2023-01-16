@@ -4,10 +4,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
 using System;
 using System.Buffers.Binary;
-using System.Security.Claims;
-using System.Security.Principal;
 using System.Text.Encodings.Web;
-using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Microsoft.AspNetCore.Connections.Features;
@@ -27,6 +24,8 @@ public class NtlmHandler
         get => Context.Items[ChallengeKey] as string;
         set => Context.Items[ChallengeKey] = value;
     }
+
+    private readonly NtlmIdentityBuilder _identityBuilder = new(); 
 
     [UsedImplicitly]
     public NtlmHandler(
@@ -72,7 +71,7 @@ public class NtlmHandler
                         if (connectionState.NtlmAuthHelperProxy is { IsRunning: true } ntlmHelper 
                             && await ntlmHelper.HandleNtlmType3MessageAsync(payloadBase64) is {} username)
                         {
-                            var user = connectionState.ConnectionUser = new ClaimsPrincipal(new GenericIdentity(username));
+                            var user = connectionState.ConnectionUser = _identityBuilder.BuildPrincipal(username);
                                 // Dispose helper.
                             connectionState.NtlmAuthHelperProxy = null;
                             return AuthenticateResult.Success(new AuthenticationTicket(user, Scheme.Name));
@@ -101,6 +100,7 @@ public class NtlmHandler
             return AuthenticateResult.Fail(ex);
         }
     }
+
 
     protected override Task HandleChallengeAsync(AuthenticationProperties properties)
     {
