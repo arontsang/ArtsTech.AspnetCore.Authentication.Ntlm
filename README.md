@@ -10,6 +10,10 @@ An AspnetCore middleware for NTLM auth on Posix
  - Winbindd service running
  - ntlm_auth accessible on PATH
 
+## Optional
+
+ - Samba Winbind Client libraries (include PrimarySid claim)
+
 Configuration of Samba/Winbind is out of scope of this readme (and its quite beyond me).
 
 ## Usage
