@@ -6,5 +6,6 @@ samba-tool domain provision  \
     --adminpass P@ssword123 \
     --dns-backend=SAMBA_INTERNAL \
     --server-role=dc 
-samba-tool user create user1 S3cret123
-samba-tool user create user2 S3cret123
+samba-tool user create alice Hunter2
+samba-tool user create bob CorrectHorseBatteryStaple
+samba-tool user create eve Tr0ub4dor&3

@@ -20,8 +20,7 @@ internal class NtlmAuthenticatorPool
 
 	private NtlmSquidHelperProxy? DequeueNextRecycled()
 	{
-		NtlmSquidHelperProxy result;
-		while (_recycleQueue.TryDequeue(out result))
+		while (_recycleQueue.TryDequeue(out var result))
 		{
 			if (result.IsRunning)
 				return result;
@@ -38,7 +37,7 @@ internal class NtlmAuthenticatorPool
 			proxy.Dispose();
 	}
 
-	private class NtlmHelperContext : INtlmAuthenticator, IDisposable
+	private class NtlmHelperContext : INtlmAuthenticator
 	{
 		private readonly NtlmSquidHelperProxy _proxy;
 		private readonly NtlmAuthenticatorPool _parent;

@@ -15,7 +15,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ArtsTech.AspnetCore.Authentication.Ntlm\ArtsTech.AspnetCore.Authentication.Ntlm.csproj" />
-    <ProjectReference Include="..\ArtsTech.Ntlm.FakeSquidHelper\ArtsTech.Ntlm.FakeSquidHelper.csproj" />
   </ItemGroup>
 
   <ItemGroup>

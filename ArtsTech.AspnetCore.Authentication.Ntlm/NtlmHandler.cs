@@ -126,7 +126,7 @@ public class NtlmHandler
     }
     
 
-    private static object NtlmStateKey = new();
+    private static readonly object NtlmStateKey = new();
 
     private NtlmConnectionState GetNtlmState()
     {
