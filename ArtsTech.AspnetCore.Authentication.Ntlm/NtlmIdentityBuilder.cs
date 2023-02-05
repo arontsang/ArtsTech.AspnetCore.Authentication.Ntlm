@@ -27,27 +27,71 @@ public class NtlmIdentityBuilder
 	
 	public ClaimsPrincipal BuildPrincipal(string username)
 	{
-		var ret = new GenericIdentity(username);
-		if (GetSid(username) is { } sid)
-		{
-			ret.AddClaim(new Claim(ClaimTypes.PrimarySid, sid));
-		}
-		
+		var ret = new ClaimsIdentity(username);
+		AddClaims(ret);
 		return new ClaimsPrincipal(ret);
 	}
 
-	private static string? GetSid(string username)
+	private static void AddClaims(ClaimsIdentity identity)
 	{
 		if (WinBindClient is {} lib 
-			&& ExtractUserAndDomain(username) is ({ } domain, { } user))
+			&& ExtractUserAndDomain(identity.Name) is ({ } domain, { } user))
 		{
-			return GetSid(lib, domain, user);
+			Span<byte> sidBinary = stackalloc byte[68];
+			if (TryGetSid(lib, domain, user, sidBinary))
+			{
+				identity.AddClaim(new Claim(ClaimTypes.PrimarySid, SidToString(lib, sidBinary)));
+				GetUserGroupSids(lib, identity, sidBinary);
+			}
 		}
-
-		return null;
 	}
-	
-	private static string? GetSid(IWinBindClient wbcLib, ReadOnlyMemory<char> domain, ReadOnlyMemory<char> user)
+
+	private static void GetUserGroupSids(IWinBindClient lib, ClaimsIdentity identity, ReadOnlySpan<byte> sidBinary)
+	{
+		unsafe
+		{
+			IntPtr buffer = IntPtr.Zero;
+
+			try
+			{
+				if (lib.LookupUserSids(sidBinary, true, out int numberOfSids, out buffer) !=
+				    WbcErrorType.WBC_ERR_SUCCESS)
+					return;
+
+				foreach (var groupSid in new Span<Sid>(buffer.ToPointer(), numberOfSids))
+				{
+					if (SidToString(lib, groupSid.Value) is {} sidString)
+						identity.AddClaim(new Claim(ClaimTypes.GroupSid, sidString));
+
+				}
+
+				Console.WriteLine("hello");
+			}
+			finally
+			{
+				if (buffer != IntPtr.Zero)
+					lib.FreeMemory(buffer);
+			}
+		}
+	}
+
+	private struct Sid
+	{
+		private unsafe fixed byte _value[68];
+		public Span<byte> Value
+		{
+			get
+			{
+				unsafe
+				{
+					fixed(byte* ptr = _value)
+						return new Span<byte>(ptr, 68);
+				}
+			}
+		}
+	}
+
+	private static bool TryGetSid(IWinBindClient wbcLib, ReadOnlyMemory<char> domain, ReadOnlyMemory<char> user, Span<byte> sidBinary)
 	{
 		Span<byte> domainUtf8 = stackalloc byte[128];
 		Span<byte> usernameUtf8 = stackalloc byte[128];
@@ -56,22 +100,17 @@ public class NtlmIdentityBuilder
 		GetUtf8String(domain, ref domainUtf8);
 		GetUtf8String(user, ref usernameUtf8);
 		
-		return GetSid(
+		return TryGetSid(
 			wbcLib,
 			domainUtf8,
-			usernameUtf8
+			usernameUtf8,
+			sidBinary
 		);
 	}
 	
-	private static string? GetSid(IWinBindClient wbcLib, ReadOnlySpan<byte> domain, ReadOnlySpan<byte> user)
+	private static bool TryGetSid(IWinBindClient wbcLib, ReadOnlySpan<byte> domain, ReadOnlySpan<byte> user, Span<byte> sidBinary)
 	{
-		Span<byte> sidBinary = stackalloc byte[128];
-		if (wbcLib.LookupName(domain, user, sidBinary, out var type) == WbcErrorType.WBC_ERR_SUCCESS)
-		{
-			return SidToString(wbcLib, sidBinary);
-		}
-
-		return null;
+		return wbcLib.LookupName(domain, user, sidBinary, out _) == WbcErrorType.WBC_ERR_SUCCESS;
 	}
 	
 	
@@ -117,6 +156,7 @@ public class NtlmIdentityBuilder
 
 		return null;
 	}
+
 	
 	
 	public interface IWinBindClient
@@ -126,6 +166,9 @@ public class NtlmIdentityBuilder
 
 		[NativeSymbol("wbcSidToString")]
 		WbcErrorType SidToString(ReadOnlySpan<byte> sidBinary, out IntPtr sidString);
+		
+		[NativeSymbol("wbcLookupUserSids")]
+		WbcErrorType LookupUserSids(ReadOnlySpan<byte> sidBinary, bool domainGroupsOnly, out int numberOfSids, out IntPtr buffer);
 
 		[NativeSymbol("wbcFreeMemory")]
 		void FreeMemory(IntPtr ptr);

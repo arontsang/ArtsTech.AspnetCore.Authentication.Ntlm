@@ -7,6 +7,12 @@
 
 <div class="text-center">
     <h1 class="display-4">Welcome @HttpContext.User.Identity?.Name</h1>
-    <p>@HttpContext.User.FindFirst(ClaimTypes.PrimarySid)?.Value</p>
+    <p>Your user SID is @HttpContext.User.FindFirst(ClaimTypes.PrimarySid)?.Value</p>
+    
+    @foreach (var groupClaim in HttpContext.User.FindAll(ClaimTypes.GroupSid))
+    {
+        <p>You are a member of group SID: @groupClaim.Value</p>
+    }
+    
     <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
 </div>

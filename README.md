@@ -12,11 +12,21 @@ An AspnetCore middleware for NTLM auth on Posix
 
 ## Optional
 
- - Samba Winbind Client libraries (include PrimarySid claim)
+ - Samba Winbind Client libraries (include PrimarySid claim and GroupSid claims)
 
 Configuration of Samba/Winbind is out of scope of this readme (and its quite beyond me).
 
 ## Usage
+
+### Claims
+
+This library will return a ClaimsPrinciple with a ClaimsIdentity.
+
+The ClaimsIdentity will have the following claims:
+
+    - ClaimTypes.Name
+    - ClaimTypes.PrimarySid (Optional requires libwbclient)
+    - ClaimTypes.GroupSid (Optional requires libwbclient)
 
 ### Dotnet 6 Minimal API example
     
@@ -40,6 +50,8 @@ Configuration of Samba/Winbind is out of scope of this readme (and its quite bey
     app.MapRazorPages();
 
     app.Run();
+
+
 
 ## FAQ
 

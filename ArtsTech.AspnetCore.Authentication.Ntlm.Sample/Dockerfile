@@ -12,10 +12,10 @@ WORKDIR /src
 COPY . .
 RUN dotnet restore "ArtsTech.AspnetCore.Authentication.Ntlm.Sample/ArtsTech.AspnetCore.Authentication.Ntlm.Sample.csproj"
 WORKDIR "/src/ArtsTech.AspnetCore.Authentication.Ntlm.Sample"
-RUN dotnet build "ArtsTech.AspnetCore.Authentication.Ntlm.Sample.csproj" -c Release -o /app/build
+RUN dotnet build "ArtsTech.AspnetCore.Authentication.Ntlm.Sample.csproj" -c Debug -o /app/build
 
 FROM build AS publish
-RUN dotnet publish "ArtsTech.AspnetCore.Authentication.Ntlm.Sample.csproj" -c Release -o /app/publish 
+RUN dotnet publish "ArtsTech.AspnetCore.Authentication.Ntlm.Sample.csproj" -c Debug -o /app/publish 
 
 FROM base AS final
 WORKDIR /app
