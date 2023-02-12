@@ -28,6 +28,10 @@ The ClaimsIdentity will have the following claims:
     - ClaimTypes.PrimarySid (Optional requires libwbclient)
     - ClaimTypes.GroupSid (Optional requires libwbclient)
 
+**Note, we only return GroupSid for user's direct membership. We do not recursively search for user's group membership yet.
+
+You can instead use an `IClaimsTransformation` to search LDAP for group memberships recursively. 
+
 ### Dotnet 6 Minimal API example
     
     using ArtsTech.AspnetCore.Authentication.Ntlm;
@@ -52,10 +56,4 @@ The ClaimsIdentity will have the following claims:
     app.Run();
 
 
-
-## FAQ
-
-### Why doesn't this support role-based access control (RBAC)?
-
-Sorry, I aim to do one thing with this project, and that is to implement NTLM auth on Linux. You add a custom [Claims Transform](https://docs.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.authentication.iclaimstransformation.transformasync?view=aspnetcore-6.0) to add the Role claims from an LDAP query. Just register your `IClaimsTransformation` in your service provider.
 

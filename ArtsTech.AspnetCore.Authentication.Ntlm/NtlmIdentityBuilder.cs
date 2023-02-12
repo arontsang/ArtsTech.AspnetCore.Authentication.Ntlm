@@ -24,26 +24,42 @@ public class NtlmIdentityBuilder
 			// Do nothing. Unable to load libwbclient
 		}
 	}
+
+	
 	
 	public ClaimsPrincipal BuildPrincipal(string username)
 	{
-		var ret = new ClaimsIdentity(username);
+		var ret = new ClaimsIdentity("NTLM");
+		ret.AddClaim(new (ret.NameClaimType, username));
 		AddClaims(ret);
-		return new ClaimsPrincipal(ret);
+		return new SambaPrincipal(ret);
+	}
+
+	public static string? GetSecurityIdentifier(string qualifiedName)
+	{
+		Span<byte> sidBinary = stackalloc byte[68];
+		if (WinBindClient is not { } lib || !TryGetSidByName(lib, qualifiedName, sidBinary)) return null;
+
+		return SidToString(lib, sidBinary);
 	}
 
 	private static void AddClaims(ClaimsIdentity identity)
 	{
-		if (WinBindClient is {} lib 
-			&& ExtractUserAndDomain(identity.Name) is ({ } domain, { } user))
+		Span<byte> sidBinary = stackalloc byte[68];
+		if (WinBindClient is {} lib && TryGetSidByName(lib, identity.Name, sidBinary))
 		{
-			Span<byte> sidBinary = stackalloc byte[68];
-			if (TryGetSid(lib, domain, user, sidBinary))
-			{
-				identity.AddClaim(new Claim(ClaimTypes.PrimarySid, SidToString(lib, sidBinary)));
-				GetUserGroupSids(lib, identity, sidBinary);
-			}
+			identity.AddClaim(new Claim(ClaimTypes.PrimarySid, SidToString(lib, sidBinary)));
+			GetUserGroupSids(lib, identity, sidBinary);
 		}
+	}
+	
+	private static bool TryGetSidByName(
+		IWinBindClient lib,
+		string qualifiedName, Span<byte> sidBinary)
+	{
+		if (ExtractUserAndDomain(qualifiedName) is not ({ } domain, { } user)) 
+			return false;
+		return TryGetSid(lib, domain, user, sidBinary);
 	}
 
 	private static void GetUserGroupSids(IWinBindClient lib, ClaimsIdentity identity, ReadOnlySpan<byte> sidBinary)
@@ -54,18 +70,18 @@ public class NtlmIdentityBuilder
 
 			try
 			{
-				if (lib.LookupUserSids(sidBinary, true, out int numberOfSids, out buffer) !=
+				if (lib.LookupUserSids(sidBinary, false, out int numberOfSids, out buffer) !=
 				    WbcErrorType.WBC_ERR_SUCCESS)
 					return;
 
 				foreach (var groupSid in new Span<Sid>(buffer.ToPointer(), numberOfSids))
 				{
-					if (SidToString(lib, groupSid.Value) is {} sidString)
+					if (SidToString(lib, groupSid.Value) is { } sidString &&
+					    !identity.HasClaim(ClaimTypes.GroupSid, sidString))
+					{
 						identity.AddClaim(new Claim(ClaimTypes.GroupSid, sidString));
-
+					}
 				}
-
-				Console.WriteLine("hello");
 			}
 			finally
 			{

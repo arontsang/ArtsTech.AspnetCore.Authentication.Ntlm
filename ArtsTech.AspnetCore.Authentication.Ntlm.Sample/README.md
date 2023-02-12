@@ -8,9 +8,9 @@ WinbindService will run `run-samba.sh` and then start the `samba` backend, befor
 
 ### Example passwords
 
-| User         | Password                  |
-|--------------|---------------------------|
-| adminstrator | P@ssword123               |
-| alice        | Hunter2                   |
-| bob          | CorrectHorseBatteryStaple |
-| eve          | Tr0ub4dor&3               |
+| User         | Password                   |
+|--------------|----------------------------|
+| adminstrator | P@ssword123                |
+| alice        | Hunter2                    |
+| bob          | CorrectHorseBatteryStaple1 |
+| eve          | Tr0ub4dor&3                |
