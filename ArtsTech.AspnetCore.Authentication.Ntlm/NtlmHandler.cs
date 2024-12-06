@@ -4,31 +4,35 @@ using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
 using System;
 using System.Buffers.Binary;
+using System.Runtime.InteropServices;
+using System.Security.Claims;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
 using ArtsTech.AspnetCore.Authentication.Ntlm.SquidHelper;
 using JetBrains.Annotations;
 using Microsoft.AspNetCore.Connections.Features;
+using Microsoft.AspNetCore.Http;
 
 namespace ArtsTech.AspnetCore.Authentication.Ntlm;
 
 // ReSharper disable once ClassNeverInstantiated.Global
 public class NtlmHandler
     : AuthenticationHandler<NtlmOptions>
+    , IAuthenticationRequestHandler
 {
     private static readonly Memory<byte> NtlmSspCString =
         new(new byte[] { 0x4e, 0x54, 0x4c, 0x4d, 0x53, 0x53, 0x50, 0x00 });
-    
-    private static readonly NtlmAuthenticatorPool AuthenticatorPool = new NtlmAuthenticatorPool();
-
-    private static readonly object ChallengeKey = new();
-    private string? Challenge
-    {
-        get => Context.Items[ChallengeKey] as string;
-        set => Context.Items[ChallengeKey] = value;
-    }
-
-    private readonly NtlmIdentityBuilder _identityBuilder = new(); 
+    #if !NETSTANDARD2_0
+    private static readonly INtlmAuthenticatorPool AuthenticatorPool = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+        ? new WindowsAuthenticatorPool()
+        : new NtlmAuthenticatorPool();
+    private readonly NtlmIdentityBuilder? _identityBuilder = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+        ? null
+        : new();
+    #else
+    private static readonly INtlmAuthenticatorPool AuthenticatorPool = new NtlmAuthenticatorPool();
+    private readonly NtlmIdentityBuilder _identityBuilder = new();
+    #endif
 
     [UsedImplicitly]
     public NtlmHandler(
@@ -39,11 +43,14 @@ public class NtlmHandler
     {
     }
 
-    protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
+    public async Task<bool> HandleRequestAsync()
     {
-        var connectionState = GetNtlmState();
         try
         {
+            // Exit early, if we are unable to store a connection state.
+            if (GetNtlmState() is not { } connectionState) return false;
+            
+            
             foreach (var authorizationString in Request.Headers[HeaderNames.Authorization])
             {
                 if (!authorizationString.StartsWith("NTLM "))
@@ -63,82 +70,87 @@ public class NtlmHandler
                     case 1:
                     {
                         var authHelperProxy= connectionState.NtlmAuthHelperProxy = await AuthenticatorPool.GetAuthenticator(payloadBase64);
-                        Challenge = authHelperProxy.AuthenticationChallenge;
-                        return AuthenticateResult.Fail("NTLM Challenge sent.");
+                        var challenge = authHelperProxy.AuthenticationChallenge;
+                        Response.Headers.Add(HeaderNames.WWWAuthenticate, $"NTLM {challenge}");
+                        Response.StatusCode = StatusCodes.Status401Unauthorized;
+                        return true;
                     }
                     case 2:
-                        return AuthenticateResult.Fail(
-                            new InvalidOperationException("NTLM type 2 message is not expected from client."));
+                    {
+                        Logger.LogWarning("Unexpected NTLM type 2 message from client");
+                        return false;
+                    }
                     case 3:
                     {
                         if (connectionState.NtlmAuthHelperProxy is {} ntlmHelper)
                         {
                             if (await ntlmHelper.Authenticate(payloadBase64) is {} username)
                             {
-                                var user = connectionState.ConnectionUser = _identityBuilder.BuildPrincipal(username);
+                                if (_identityBuilder is { } identityBuilder)
+                                    connectionState.ConnectionUser = identityBuilder.BuildPrincipal(username);
+                                else
+                                {
+                                    var identity = new ClaimsIdentity(Scheme.Name);
+                                    identity.AddClaim(new Claim(ClaimTypes.Name, username));
+                                    connectionState.ConnectionUser = new SambaPrincipal(identity);
+                                }
                                 // Dispose helper.
                                 connectionState.NtlmAuthHelperProxy = null;
-                                return AuthenticateResult.Success(new AuthenticationTicket(user, Scheme.Name));
-                            }
-                            else
-                            {
-                                return AuthenticateResult.Fail("Not Authorized");
                             }
                         }
-                        else
-                        {
-                            return AuthenticateResult.Fail(new NtlmHelperNotInitException());
-                        }
+                        return false;
                     }
                     default:
-                        return AuthenticateResult.Fail(
-                            new InvalidOperationException($"Unknown NTLM message type {messageType}."));
-
+                    {
+                        Logger.LogWarning("Unknown NTLM message type {MessageType}", messageType);
+                        return false;
+                    }
                 }
             }
 
-            if (connectionState.ConnectionUser is { } existingUser)
-            {
-                return AuthenticateResult.Success(new AuthenticationTicket(existingUser.Clone(), Scheme.Name));
-            }
-
-            return AuthenticateResult.NoResult();
+            return false;
         }
         catch (Exception ex)
         {
-            return AuthenticateResult.Fail(ex);
+            Logger.LogError(ex, "Unexpected error handling NTLM login");
+            return false;
         }
+    }
+
+    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+    {
+        if (GetNtlmState() is not { } connectionState)
+            return Task.FromResult(AuthenticateResult.NoResult());
+        
+        if (connectionState is { ConnectionUser: {} connectionUser})
+            return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(connectionUser.Clone(), Scheme.Name)));
+        
+        return Task.FromResult(AuthenticateResult.NoResult());
     }
 
 
     protected override Task HandleChallengeAsync(AuthenticationProperties properties)
     {
-        if (Challenge is {} challenge)
-        {
-            Response.Headers.Add(HeaderNames.WWWAuthenticate, $"NTLM {challenge}");
-        }
-        else
-        {
-            Response.Headers.Add(HeaderNames.WWWAuthenticate, "NTLM");
-        }
-
+        Response.Headers.Add(HeaderNames.WWWAuthenticate, "NTLM");
         return base.HandleChallengeAsync(properties);
     }
     
 
     private static readonly object NtlmStateKey = new();
 
-    private NtlmConnectionState GetNtlmState()
+    private NtlmConnectionState? GetNtlmState()
     {
         if (Context.Features.Get<IConnectionItemsFeature>() is not { } connectionItems)
-
-            throw new NotSupportedException(
-                $"NTLM authentication requires a server that supports {nameof(IConnectionItemsFeature)} like Kestrel.");
-
+        {
+            Logger.LogWarning($"NTLM authentication requires a server that supports {nameof(IConnectionItemsFeature)} like Kestrel.");
+            return null;
+        }
 
         if (Context.Features.Get<IConnectionCompleteFeature>() is not { } connectionLifetime)
-            throw new NotSupportedException(
-                $"NTLM authentication requires a server that supports {nameof(IConnectionLifetimeFeature)} like Kestrel.");
+        {
+            Logger.LogWarning($"NTLM authentication requires a server that supports {nameof(IConnectionLifetimeFeature)} like Kestrel.");
+            return null;
+        }
 
         if (connectionItems.Items.TryGetValue(NtlmStateKey, out var ret) && ret is NtlmConnectionState state)
             return state;

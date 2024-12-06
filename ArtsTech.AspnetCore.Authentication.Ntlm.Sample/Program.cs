@@ -8,7 +8,7 @@ builder.Services.AddAuthentication(NtlmDefaults.AuthenticationScheme)
      .AddNtlm();
 
 builder.Services.AddAuthorization();
-builder.Services.AddHostedService<WinBindService>();
+//builder.Services.AddHostedService<WinBindService>();
 
 var app = builder.Build();
 

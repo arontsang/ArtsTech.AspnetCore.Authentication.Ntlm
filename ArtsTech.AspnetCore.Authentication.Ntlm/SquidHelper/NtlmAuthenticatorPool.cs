@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace ArtsTech.AspnetCore.Authentication.Ntlm.SquidHelper;
 
-internal class NtlmAuthenticatorPool
+internal class NtlmAuthenticatorPool : INtlmAuthenticatorPool
 {
 	private readonly ConcurrentQueue<NtlmSquidHelperProxy> _recycleQueue = new();
 

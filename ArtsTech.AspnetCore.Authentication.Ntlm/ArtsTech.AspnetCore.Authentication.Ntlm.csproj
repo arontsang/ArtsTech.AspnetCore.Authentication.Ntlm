@@ -1,9 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
 	<Nullable>enable</Nullable>
-	<LangVersion>10.0</LangVersion>
+	<LangVersion>12</LangVersion>
 	<Authors>Aron Tsang</Authors>
 	<RepositoryUrl>https://github.com/arontsang/ArtsTech.AspnetCore.Authentication.Ntlm</RepositoryUrl>
 	<RepositoryType>git</RepositoryType>
@@ -13,9 +12,11 @@
 	<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 	<PackageReadmeFile>README.md</PackageReadmeFile>
 
-	<Version>1.1.1</Version>
+	<Version>1.2.0</Version>
 
 	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+	<TargetFrameworks>netstandard2.0;net8.0</TargetFrameworks>
   </PropertyGroup>
 
   <ItemGroup>
