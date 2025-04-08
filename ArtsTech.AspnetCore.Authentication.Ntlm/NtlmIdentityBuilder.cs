@@ -4,10 +4,11 @@ using System.Security.Claims;
 using System.Security.Principal;
 using System.Text;
 using AdvancedDLSupport;
+using Microsoft.AspNetCore.Authentication;
 
 namespace ArtsTech.AspnetCore.Authentication.Ntlm;
 
-public class NtlmIdentityBuilder
+public class NtlmIdentityBuilder : IIdentityBuilder
 {
 	private static readonly IWinBindClient? WinBindClient;
 	private static readonly UTF8Encoding Utf8 = new(false);
@@ -27,9 +28,9 @@ public class NtlmIdentityBuilder
 
 	
 	
-	public ClaimsPrincipal BuildPrincipal(string username)
+	public ClaimsPrincipal BuildPrincipal(AuthenticationScheme authenticationScheme, string username)
 	{
-		var ret = new ClaimsIdentity("NTLM");
+		var ret = new ClaimsIdentity(authenticationScheme.Name);
 		ret.AddClaim(new (ret.NameClaimType, username));
 		AddClaims(ret);
 		return new SambaPrincipal(ret);

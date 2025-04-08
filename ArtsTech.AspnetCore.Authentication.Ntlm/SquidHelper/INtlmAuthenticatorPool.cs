@@ -2,7 +2,7 @@
 
 namespace ArtsTech.AspnetCore.Authentication.Ntlm.SquidHelper;
 
-internal interface INtlmAuthenticatorPool
+public interface INtlmAuthenticatorPool
 {
     Task<INtlmAuthenticator> GetAuthenticator(string type1Message);
 }

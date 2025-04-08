@@ -4,11 +4,9 @@ using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
 using System;
 using System.Buffers.Binary;
-using System.Runtime.InteropServices;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
-using ArtsTech.AspnetCore.Authentication.Ntlm.SquidHelper;
 using JetBrains.Annotations;
 using Microsoft.AspNetCore.Connections.Features;
 using Microsoft.AspNetCore.Http;
@@ -22,17 +20,6 @@ public class NtlmHandler
 {
     private static readonly Memory<byte> NtlmSspCString =
         new(new byte[] { 0x4e, 0x54, 0x4c, 0x4d, 0x53, 0x53, 0x50, 0x00 });
-    #if !NETSTANDARD2_0
-    private static readonly INtlmAuthenticatorPool AuthenticatorPool = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-        ? new WindowsAuthenticatorPool()
-        : new NtlmAuthenticatorPool();
-    private readonly NtlmIdentityBuilder? _identityBuilder = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-        ? null
-        : new();
-    #else
-    private static readonly INtlmAuthenticatorPool AuthenticatorPool = new NtlmAuthenticatorPool();
-    private readonly NtlmIdentityBuilder _identityBuilder = new();
-    #endif
 
     [UsedImplicitly]
     public NtlmHandler(
@@ -69,7 +56,8 @@ public class NtlmHandler
                 {
                     case 1:
                     {
-                        var authHelperProxy= connectionState.NtlmAuthHelperProxy = await AuthenticatorPool.GetAuthenticator(payloadBase64);
+                        var authHelperProxy= connectionState.NtlmAuthHelperProxy 
+                            = await OptionsMonitor.CurrentValue.AuthenticatorPool.GetAuthenticator(payloadBase64);
                         var challenge = authHelperProxy.AuthenticationChallenge;
                         Response.Headers.Add(HeaderNames.WWWAuthenticate, $"NTLM {challenge}");
                         Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -86,14 +74,7 @@ public class NtlmHandler
                         {
                             if (await ntlmHelper.Authenticate(payloadBase64) is {} username)
                             {
-                                if (_identityBuilder is { } identityBuilder)
-                                    connectionState.ConnectionUser = identityBuilder.BuildPrincipal(username);
-                                else
-                                {
-                                    var identity = new ClaimsIdentity(Scheme.Name);
-                                    identity.AddClaim(new Claim(ClaimTypes.Name, username));
-                                    connectionState.ConnectionUser = new SambaPrincipal(identity);
-                                }
+                                connectionState.ConnectionUser = OptionsMonitor.CurrentValue.IdentityBuilder.BuildPrincipal(Scheme, username);
                                 // Dispose helper.
                                 connectionState.NtlmAuthHelperProxy = null;
                             }

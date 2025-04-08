@@ -5,20 +5,25 @@ using System.Threading.Tasks;
 
 namespace ArtsTech.AspnetCore.Authentication.Ntlm.SquidHelper;
 
-internal class NtlmAuthenticatorPool : INtlmAuthenticatorPool
+public class NtlmSquidHelperPool(ISquidHelperFactory squidHelperFactory) : INtlmAuthenticatorPool
 {
-	private readonly ConcurrentQueue<NtlmSquidHelperProxy> _recycleQueue = new();
+	private readonly ConcurrentQueue<ISquidHelper> _recycleQueue = new();
 
+	public NtlmSquidHelperPool() : this(new LocalSquidHelperFactory())
+	{
+		
+	}
+	
 	public async Task<INtlmAuthenticator> GetAuthenticator(string type1Message)
 	{
-		NtlmAuthenticatorPool parent = this;
-		NtlmSquidHelperProxy ret = parent.DequeueNextRecycled() ?? new NtlmSquidHelperProxy();
+		NtlmSquidHelperPool parent = this;
+		ISquidHelper ret = parent.DequeueNextRecycled() ?? squidHelperFactory.Build();
 		string authenticationChallenge = await ret.HandleNtlmType1MessageAsync(type1Message);
 		INtlmAuthenticator authenticator = new NtlmHelperContext(parent, authenticationChallenge, ret);
 		return authenticator;
 	}
 
-	private NtlmSquidHelperProxy? DequeueNextRecycled()
+	private ISquidHelper? DequeueNextRecycled()
 	{
 		while (_recycleQueue.TryDequeue(out var result))
 		{
@@ -29,7 +34,7 @@ internal class NtlmAuthenticatorPool : INtlmAuthenticatorPool
 		return null;
 	}
 
-	private void Return(NtlmSquidHelperProxy proxy)
+	private void Return(ISquidHelper proxy)
 	{
 		if (proxy.IsRunning && _recycleQueue.Count < 8)
 			_recycleQueue.Enqueue(proxy);
@@ -39,13 +44,13 @@ internal class NtlmAuthenticatorPool : INtlmAuthenticatorPool
 
 	private class NtlmHelperContext : INtlmAuthenticator
 	{
-		private readonly NtlmSquidHelperProxy _proxy;
-		private readonly NtlmAuthenticatorPool _parent;
+		private readonly ISquidHelper _proxy;
+		private readonly NtlmSquidHelperPool _parent;
 
 		public NtlmHelperContext(
-			NtlmAuthenticatorPool parent,
+			NtlmSquidHelperPool parent,
 			string authenticationChallenge,
-			NtlmSquidHelperProxy proxy)
+			ISquidHelper proxy)
 		{
 			_proxy = proxy;
 			_parent = parent;
@@ -62,7 +67,15 @@ internal class NtlmAuthenticatorPool : INtlmAuthenticatorPool
 		}
 	}
 
-	private class NtlmSquidHelperProxy : IDisposable
+	private class LocalSquidHelperFactory : ISquidHelperFactory
+	{
+		public ISquidHelper Build()
+		{
+			return new NtlmSquidHelperProxy();
+		}
+	}
+	
+	private class NtlmSquidHelperProxy : ISquidHelper
 	{
 		private readonly Process _process = Process.Start(new ProcessStartInfo("/usr/bin/env", "ntlm_auth --helper-protocol=squid-2.5-ntlmssp")
 		{
