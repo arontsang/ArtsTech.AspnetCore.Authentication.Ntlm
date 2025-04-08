@@ -134,6 +134,7 @@ public class NtlmSquidHelperPool(ISquidHelperFactory squidHelperFactory) : INtlm
 
 		public void Dispose()
 		{
+			_process.Kill();
 			_disposed = true;
 			_process.Dispose();
 		}
